@@ -1,0 +1,37 @@
+name: Window 10
+
+on: 
+  [push, workflow_dispatch]  # Trigger on push or manual dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 9999  # Set a high timeout limit
+
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok-v3-stable-windows-amd64.zip
+
+    - name: Extract
+      run: Expand-Archive ngrok-v3-stable-windows-amd64.zip
+
+    - name: Auth
+      run: .\ngrok-v3-stable-windows-amd64\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  # Use NGROK_AUTH_TOKEN from secrets
+
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+    - name: Create User
+      run: |
+        $password = ConvertTo-SecureString "S@m112233!" -AsPlainText -Force
+        New-LocalUser -Name "Shahin" -Password $password -FullName "Shahin" -Description "Local user account for Shahin"
+        Add-LocalGroupMember -Group "Administrators" -Member "Shahin"
+
+    - name: Create Tunnel
+      run: .\ngrok-v3-stable-windows-amd64\ngrok.exe tcp 3389
